@@ -5,13 +5,15 @@ pub mod hardware_manager {
     }
 
     pub struct MoveState {
-        distination: u32,
-        direction: MoveDirection,
+        pub destination: u32,
+        pub direction: MoveDirection,
     }
 
     pub enum DiskState {
         STOP,
-        READ,
+        READ(u32),
         MOVE(MoveState),
     }
+
+
 }

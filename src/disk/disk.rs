@@ -1,5 +1,5 @@
 pub mod disk {
-    use crate::disk::hardware_manager::hardware_manager::DiskState;
+    use crate::disk::hardware_manager::hardware_manager::{DiskState, MoveDirection, MoveState};
 
     pub struct DiskHead {
         current_track: u32,
@@ -15,6 +15,7 @@ pub mod disk {
     pub struct Disk {
         head: DiskHead,
         metadata: DiskMetadata,
+        cahce: u32,
     }
 
     impl DiskHead {
@@ -63,6 +64,7 @@ pub mod disk {
             Disk {
                 head: DiskHead::default(),
                 metadata: metadata,
+                cahce: 0,
             }
         }
 
@@ -88,6 +90,60 @@ pub mod disk {
                 self.metadata.forward_speed,
                 self.metadata.base_spin_speed
             );
+        }
+
+        pub fn add_reading_task(&mut self) {}
+
+        pub fn add_move_task(&mut self, destination: u32) {
+            if self.head.state == DiskState::STOP {
+                let direction = if destination > self.head.current_track {
+                    MoveDirection::FORWARD
+                } else {
+                    MoveDirection::BACKWARD
+                };
+
+                self.head.state = DiskState::MOVE(MoveState::new(destination, direction));
+            }
+        }
+
+        pub fn step(&mut self) {
+            match &self.head.state {
+                DiskState::STOP => {}
+                DiskState::READ(r) => {
+                    self.cahce += 1;
+
+                    if self.cahce == self.metadata.forward_speed {
+                        self.head.state = DiskState::READ(r - 1);
+
+                        self.cahce = 0;
+                    }
+                }
+
+                DiskState::MOVE(m) => {
+                    self.cahce += 1;
+
+                    match m.direction {
+                        MoveDirection::FORWARD => {
+                            if self.cahce == self.metadata.forward_speed {
+                                self.cahce = 0;
+                            }
+
+                            self.head.current_track += 1;
+                        }
+                        MoveDirection::BACKWARD => {
+                            if self.cahce == self.metadata.forward_speed {
+                                self.cahce = 0;
+                            }
+
+                            self.head.current_track -= 1;
+                        }
+                    }
+
+                    if self.head.current_track == m.destination{
+                        self.head.state = DiskState::STOP;
+                    }
+                }
+            }
         }
     }
 }

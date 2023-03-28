@@ -3,7 +3,7 @@ use disk::disk::disk::{Disk, DiskMetadata};
 pub mod disk;
 
 fn main() {
-    let metadata = DiskMetadata::new(4000, 7200);
+    let metadata = DiskMetadata::new(1000000, 3000000000);
     let mut disk = Disk::new(metadata);
 
     disk.show();
@@ -16,7 +16,6 @@ fn main() {
 
     for _ in 0..time {
         disk.step();
-        // disk.show();
     }
     disk.show();
 
@@ -26,7 +25,17 @@ fn main() {
 
     for _ in 0..time {
         disk.step();
-        // disk.show();
     }
     disk.show();
+
+    disk.add_reading_task(150);
+    disk.show();
+
+    for _ in 0..100000000 {
+        disk.step();
+        // disk.show();
+    }
+
+    disk.show();
+
 }

@@ -92,7 +92,9 @@ pub mod disk {
             );
         }
 
-        pub fn add_reading_task(&mut self) {}
+        pub fn add_reading_task(&mut self, angle: u32) {
+            self.head.state = DiskState::READ(angle);
+        }
 
         pub fn add_move_task(&mut self, destination: u32) {
             if self.head.state == DiskState::STOP {
@@ -112,10 +114,14 @@ pub mod disk {
                 DiskState::READ(r) => {
                     self.cahce += 1;
 
-                    if self.cahce == self.metadata.forward_speed {
-                        self.head.state = DiskState::READ(r - 1);
-
+                    if self.cahce == self.metadata.base_spin_speed {
+                        self.head.current_angle += 1;
+                        self.head.current_angle %= 360;
                         self.cahce = 0;
+                    }
+
+                    if *r == self.head.current_angle {
+                        self.head.state = DiskState::STOP;
                     }
                 }
 
@@ -139,7 +145,7 @@ pub mod disk {
                         }
                     }
 
-                    if self.head.current_track == m.destination{
+                    if self.head.current_track == m.destination {
                         self.head.state = DiskState::STOP;
                     }
                 }

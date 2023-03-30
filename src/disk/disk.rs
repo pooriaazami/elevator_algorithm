@@ -68,7 +68,7 @@ pub mod disk {
             }
         }
 
-        fn get_state(&self) -> String {
+        fn get_str_state(&self) -> String {
             match &self.head.state {
                 DiskState::STOP => "STOP".to_owned(),
                 DiskState::READ(angle) => format!("READ({})", angle),
@@ -86,7 +86,7 @@ pub mod disk {
                 "Disk <\n\tHead <current track: {}, current angle: {}, state: {}>\n\tMetadata <forward speed: {}, base spin speed: {}>\n>",
                 self.head.current_track,
                 self.head.current_angle,
-                self.get_state(),
+                self.get_str_state(),
                 self.metadata.forward_speed,
                 self.metadata.base_spin_speed
             );
@@ -97,14 +97,16 @@ pub mod disk {
         }
 
         pub fn add_move_task(&mut self, destination: u32) {
-            if self.head.state == DiskState::STOP {
-                let direction = if destination > self.head.current_track {
-                    MoveDirection::FORWARD
-                } else {
-                    MoveDirection::BACKWARD
-                };
+            if destination != self.head.current_track {
+                if self.head.state == DiskState::STOP {
+                    let direction = if destination > self.head.current_track {
+                        MoveDirection::FORWARD
+                    } else {
+                        MoveDirection::BACKWARD
+                    };
 
-                self.head.state = DiskState::MOVE(MoveState::new(destination, direction));
+                    self.head.state = DiskState::MOVE(MoveState::new(destination, direction));
+                }
             }
         }
 
@@ -149,6 +151,32 @@ pub mod disk {
                         self.head.state = DiskState::STOP;
                     }
                 }
+            }
+        }
+
+        pub fn is_operating(&self) -> bool {
+            self.head.state != DiskState::STOP
+        }
+
+        pub fn detach_current_state(&mut self) -> DiskState {
+            let state = self.head.state;
+            self.head.state = DiskState::STOP;
+
+            state
+        }
+
+        pub fn get_current_track(&self) -> u32 {
+            self.head.current_track
+        }
+
+        pub fn get_current_angle(&self) -> u32 {
+            self.head.current_angle
+        }
+
+        pub fn is_rotating(&self) -> bool {
+            match self.head.state {
+                DiskState::READ(_) => true,
+                _ => false,
             }
         }
     }

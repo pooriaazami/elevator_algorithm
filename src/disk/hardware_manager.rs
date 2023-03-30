@@ -5,13 +5,13 @@ pub mod hardware_manager {
         BACKWARD,
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Eq, PartialEq, Copy, Clone)]
     pub struct MoveState {
         pub destination: u32,
         pub direction: MoveDirection,
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Eq, PartialEq, Copy, Clone)]
     pub enum DiskState {
         STOP,
         READ(u32),

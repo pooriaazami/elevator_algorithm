@@ -48,6 +48,13 @@ pub mod driver {
         pub fn get_track(&self) -> &u32 {
             &self.track
         }
+
+        pub fn show_task(&self) {
+            println!(
+                "Task<task_id: {}, track: {}, angle: {}>",
+                self.task_id, self.track, self.angle
+            );
+        }
     }
 
     impl<'a> SimpleDriver<'a> {

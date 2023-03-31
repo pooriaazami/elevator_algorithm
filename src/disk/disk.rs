@@ -86,7 +86,7 @@ pub mod disk {
 
         pub fn show(&self) {
             println!(
-                "Disk <\n\tHead <current track: {}, current angle: {}, state: {}>\n\tMetadata <forward speed: {}, base spin speed: {}>\n>",
+                "Disk <\n\tHead <current track: {}, current angle: {}, state: {}>\n\tMetadata <forward speed: {}, spin speed: {}>\n>",
                 self.head.current_track,
                 self.head.current_angle,
                 self.get_str_state(),

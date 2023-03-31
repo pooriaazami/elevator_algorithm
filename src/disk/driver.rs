@@ -104,7 +104,6 @@ pub mod driver {
                     self.same_direction_list.insert(key, tasks);
                 }
 
-                // println!("returning task with id: {}", task.task_id);
                 return Some(task);
             }
 

@@ -3,7 +3,7 @@ pub mod driver {
 
     use crate::disk::{
         disk::disk::Disk,
-        hardware_manager::hardware_manager::{DiskState, MoveDirection},
+        hardware_manager::hardware_manager::{DiskState},
     };
 
     pub struct Task {
@@ -49,6 +49,10 @@ pub mod driver {
             &self.track
         }
 
+        pub fn get_id(&self) -> &u32{
+            &self.task_id
+        }
+
         pub fn show_task(&self) {
             println!(
                 "Task<task_id: {}, track: {}, angle: {}>",
@@ -87,7 +91,6 @@ pub mod driver {
                     self.same_direction_list.insert(task.track, vec![task]);
                 }
             }
-            println!("Done");
         }
 
         fn add_to_opposite_direction_list(&mut self, task: &'a Task) {
@@ -100,7 +103,6 @@ pub mod driver {
                     self.opposite_direction_list.insert(task.track, vec![task]);
                 }
             }
-            println!("Done");
         }
 
         fn fetch_same_direction_task(&mut self) -> Option<&'a Task> {

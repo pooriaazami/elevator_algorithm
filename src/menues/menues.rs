@@ -1,5 +1,6 @@
 pub mod menues {
     use std::{
+        collections::HashMap,
         io::{stdin, stdout, Read, Write},
         num::ParseIntError,
     };
@@ -94,13 +95,15 @@ pub mod menues {
         Task::new(task_id, track, angle)
     }
 
-    fn run_simulation(algorithm: Algorithms, requests: u32) {
+    fn run_simulation(algorithm: Algorithms, requests: u32) -> Vec<u32> {
         // clear();
         println!("Here is the disk:");
         let disk = build_disk();
         disk.show();
 
         let mut tasks: Vec<Task> = Vec::new();
+        let mut insertion_times: HashMap<u32, u32> = HashMap::new();
+        let mut response_times: Vec<u32> = Vec::new();
 
         let mut driver: Box<dyn Driver> = match algorithm {
             Algorithms::NAIVE => Box::new(SimpleDriver::new(disk)),
@@ -125,13 +128,10 @@ pub mod menues {
                 let task = &tasks[added_tasks as usize];
                 // task.show_task();
                 driver.add_new_task(task);
+                insertion_times.insert(*task.get_id(), time);
 
                 added_tasks += 1;
                 remaining_tasks += 1;
-                println!(
-                    "New task with task_id: {} added, time: {}",
-                    added_tasks, time
-                );
             }
 
             time += 1;
@@ -139,12 +139,18 @@ pub mod menues {
 
             if result != 0 {
                 remaining_tasks -= 1;
-                println!(
-                    "\t\t\t\t\ttask with task_id: {} is done, time: {}",
-                    result, time
-                );
+                let response_length = time - insertion_times[&result];
+                insertion_times.remove(&result);
+
+                response_times.push(response_length);
+
+                if (added_tasks - remaining_tasks) % 10 == 0{
+                    println!("{}/{} more responses are done.", added_tasks - remaining_tasks, requests);
+                }
             }
         }
+
+        response_times
     }
 
     fn read_number_of_steps() -> u32 {
@@ -166,13 +172,23 @@ pub mod menues {
         disk
     }
 
+    fn show_stats(times: Vec<u32>) {
+        let times = times.iter().map(|x| *x as f32);
+        let length = times.len() as f32;
+        let total: f32 = times.sum();
+        let mean = total / length;
+
+        println!("mean response time: {}", mean);
+    }
+
     fn naivea_algorithm() {
         clear();
         println!("Enter the number of requests you want to simulate:");
         flush();
 
         let steps = read_number_of_steps();
-        run_simulation(Algorithms::NAIVE, steps);
+        let response_times = run_simulation(Algorithms::NAIVE, steps);
+        show_stats(response_times);
         pause();
     }
 
@@ -182,7 +198,8 @@ pub mod menues {
         flush();
 
         let steps = read_number_of_steps();
-        run_simulation(Algorithms::ELEVATOR, steps);
+        let response_times = run_simulation(Algorithms::ELEVATOR, steps);
+        show_stats(response_times);
         pause();
     }
 

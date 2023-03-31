@@ -296,7 +296,7 @@ pub mod menues {
         max_tracks: u32,
         algorithm: Algorithms,
     ) {
-        let metadata = DiskMetadata::new(forward_speed, spin_speed);
+        let metadata = DiskMetadata::from_config(forward_speed, spin_speed);
         let log_header = LogHeader {
             metadata: metadata.clone(),
             max_tracks: max_tracks,

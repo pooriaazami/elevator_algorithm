@@ -14,9 +14,9 @@ fn main() {
     let tasks = vec![
         Task::new(1, 0, 0),
         Task::new(2, 100, 50),
-        Task::new(3, 100, 180),
-        Task::new(4, 200, 50),
-        Task::new(5, 100, 50),
+        Task::new(3, 200, 180),
+        Task::new(4, 100, 50),
+        Task::new(5, 150, 50),
         Task::new(6, 0, 0),
         Task::new(7, 0, 0),
         Task::new(8, 0, 0),

@@ -1,5 +1,8 @@
 pub mod disk {
-    use crate::disk::hardware_manager::hardware_manager::{DiskState, MoveDirection, MoveState};
+    use crate::disk::{
+        driver::driver::Task,
+        hardware_manager::hardware_manager::{DiskState, MoveDirection, MoveState},
+    };
 
     pub struct DiskHead {
         current_track: u32,
@@ -165,6 +168,10 @@ pub mod disk {
             state
         }
 
+        pub fn get_state(&self) -> &DiskState {
+            &self.head.state
+        }
+
         pub fn get_current_track(&self) -> u32 {
             self.head.current_track
         }
@@ -177,6 +184,14 @@ pub mod disk {
             match self.head.state {
                 DiskState::READ(_) => true,
                 _ => false,
+            }
+        }
+
+        pub fn calculate_moving_direction(&self, task: &Task) -> MoveDirection {
+            if task.get_track() >= self.head.current_track {
+                MoveDirection::FORWARD
+            } else {
+                MoveDirection::BACKWARD
             }
         }
     }

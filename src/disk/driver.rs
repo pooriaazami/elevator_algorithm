@@ -1,5 +1,10 @@
 pub mod driver {
-    use crate::disk::{disk::disk::Disk};
+    use std::collections::HashMap;
+
+    use crate::disk::{
+        disk::disk::Disk,
+        hardware_manager::hardware_manager::{DiskState, MoveDirection},
+    };
 
     pub struct Task {
         task_id: u32,
@@ -24,6 +29,13 @@ pub mod driver {
         task_list: Vec<&'a Task>,
     }
 
+    pub struct ElevetorDriver<'a> {
+        disk: Disk,
+        cache: CacheState<'a>,
+        same_direction_list: HashMap<u32, Vec<&'a Task>>,
+        opposite_direction_list: HashMap<u32, Vec<&'a Task>>,
+    }
+
     impl Task {
         pub fn new(task_id: u32, track: u32, angle: u32) -> Task {
             Task {
@@ -31,6 +43,10 @@ pub mod driver {
                 track: track,
                 angle: angle,
             }
+        }
+
+        pub fn get_track(&self) -> u32 {
+            return self.track;
         }
     }
 
@@ -40,6 +56,43 @@ pub mod driver {
                 disk: disk,
                 cache: CacheState::EMPTY,
                 task_list: Vec::new(),
+            }
+        }
+    }
+
+    impl<'a> ElevetorDriver<'a> {
+        pub fn new(disk: Disk) -> ElevetorDriver<'a> {
+            ElevetorDriver {
+                disk: disk,
+                cache: CacheState::EMPTY,
+                same_direction_list: HashMap::new(),
+                opposite_direction_list: HashMap::new(),
+            }
+        }
+
+        fn add_to_same_direction_list(&mut self, task: &'a Task) {
+            let vector = self.same_direction_list.get_mut(&task.get_track());
+            match vector {
+                Some(v) => {
+                    v.push(task);
+                }
+                None => {
+                    self.same_direction_list
+                        .insert(task.get_track(), vec![task]);
+                }
+            }
+        }
+
+        fn add_to_opposite_direction_list(&mut self, task: &'a Task) {
+            let vector = self.opposite_direction_list.get_mut(&task.get_track());
+            match vector {
+                Some(v) => {
+                    v.push(task);
+                }
+                None => {
+                    self.opposite_direction_list
+                        .insert(task.get_track(), vec![task]);
+                }
             }
         }
     }
@@ -77,6 +130,47 @@ pub mod driver {
             }
 
             0
+        }
+    }
+
+    impl<'a> Driver<'a> for ElevetorDriver<'a> {
+        fn add_new_task(&mut self, task: &'a Task) {
+            match self.disk.get_state() {
+                DiskState::STOP => {
+                    self.same_direction_list.insert(task.track, vec![task]);
+                }
+                DiskState::READ(_) => {
+                    if self.disk.get_current_track() == task.track {
+                        self.add_to_same_direction_list(task);
+                    }
+                }
+                DiskState::MOVE(state) => {
+                    if self.disk.get_current_track() == task.track {
+                        self.opposite_direction_list.insert(task.track, vec![task]);
+                    } else {
+                        match self.disk.calculate_moving_direction(task) {
+                            MoveDirection::FORWARD => {
+                                if state.direction == MoveDirection::FORWARD {
+                                    self.add_to_same_direction_list(task);
+                                } else {
+                                    self.add_to_opposite_direction_list(task);
+                                }
+                            }
+                            MoveDirection::BACKWARD => {
+                                if state.direction == MoveDirection::BACKWARD {
+                                    self.add_to_same_direction_list(task);
+                                } else {
+                                    self.add_to_opposite_direction_list(task);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fn step(&mut self) -> u32 {
+            todo!()
         }
     }
 }

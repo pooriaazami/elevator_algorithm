@@ -10,6 +10,7 @@ pub mod disk {
         state: DiskState,
     }
 
+    #[derive(Copy, Clone)]
     pub struct DiskMetadata {
         forward_speed: u32,
         spin_speed: u32,
@@ -70,6 +71,14 @@ pub mod disk {
                 forward_speed: forward_speed,
                 spin_speed: spin_speed,
             }
+        }
+
+        pub fn get_forward_speed(&self) -> &u32 {
+            &self.forward_speed
+        }
+
+        pub fn get_spin_speed(&self) -> &u32 {
+            &self.spin_speed
         }
     }
 

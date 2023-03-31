@@ -1,8 +1,10 @@
 pub mod menues {
     use std::{
         collections::HashMap,
+        fs::File,
         io::{stdin, stdout, Read, Write},
         num::ParseIntError,
+        time::SystemTime,
     };
 
     use rand::Rng;
@@ -23,9 +25,16 @@ pub mod menues {
         INVALID,
     }
 
+    #[derive(Copy, Clone)]
     enum Algorithms {
         NAIVE,
         ELEVATOR,
+    }
+
+    struct LogHeader {
+        metadata: DiskMetadata,
+        max_tracks: u32,
+        steps: u32,
     }
 
     fn clear() {
@@ -159,7 +168,7 @@ pub mod menues {
 
             time += 1;
             let result = driver.step();
-            // println!("{}", result);
+
             if result != 0 {
                 remaining_tasks -= 1;
                 let response_length = time - insertion_times[&result];
@@ -209,26 +218,118 @@ pub mod menues {
         disk
     }
 
-    fn show_stats(times: Vec<u32>) {
-        let times = times.iter().map(|x| *x as f32);
-        let length = times.len() as f32;
-        let total: f32 = times.sum();
-        let mean = total / length;
+    fn open_log_file() -> File {
+        let log_file_path = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+            .to_string();
+        let log_file_path = format!("{}.txt", log_file_path);
 
-        println!("mean response time: {}", mean);
+        let data_file =
+            File::create(log_file_path).expect("There was a problem creating the log file");
+
+        data_file
+    }
+
+    fn log_data_to_file(
+        data_file: &mut File,
+        algortihm: Algorithms,
+        log_header: LogHeader,
+        times: Vec<u32>,
+    ) {
+        let algorithm = match algortihm {
+            Algorithms::NAIVE => "Naive",
+            Algorithms::ELEVATOR => "Elevator",
+        };
+
+        let header = format!(
+            "algorithm: {}, forward_speed: {}, spin_speed: {}, max_track: {}, steps: {}\n",
+            algorithm,
+            log_header.metadata.get_forward_speed(),
+            log_header.metadata.get_spin_speed(),
+            log_header.max_tracks,
+            log_header.steps,
+        );
+
+        data_file
+            .write(header.as_bytes())
+            .expect("There was an error while write header to the log file");
+
+        for time in times.iter() {
+            data_file
+                .write(time.to_string().as_bytes())
+                .expect("There was an error while write data to the log file");
+            data_file
+                .write(",".as_bytes())
+                .expect("There was an error while write data to the log file");
+        }
+        data_file
+            .write("\n".as_bytes())
+            .expect("There was an error while write data to the log file");
     }
 
     fn simulation_menu(algorithm: Algorithms) {
         clear();
         let (metadata, max_track) = read_hard_metadata();
         println!("Enter the number of requests you want to simulate:");
-        // flush();
 
         let steps = safe_read_int_value();
+        let log_header = LogHeader {
+            metadata: metadata.clone(),
+            max_tracks: max_track,
+            steps: steps,
+        };
         let response_times = run_simulation(algorithm, metadata, max_track, steps);
 
-        show_stats(response_times);
+        let mut log_file = open_log_file();
+        // show_stats(response_times);
+        log_data_to_file(&mut log_file, algorithm, log_header, response_times);
         pause();
+    }
+
+    fn generate_experience(
+        log_file: &mut File,
+        forward_speed: u32,
+        spin_speed: u32,
+        steps: u32,
+        max_tracks: u32,
+        algorithm: Algorithms,
+    ) {
+        let metadata = DiskMetadata::new(forward_speed, spin_speed);
+        let log_header = LogHeader {
+            metadata: metadata.clone(),
+            max_tracks: max_tracks,
+            steps: steps,
+        };
+
+        let response_times = run_simulation(algorithm, metadata, max_tracks, steps);
+        log_data_to_file(log_file, algorithm, log_header, response_times);
+    }
+
+    fn log_all_configs() {
+        let mut log_file = open_log_file();
+
+        for algorithm in [Algorithms::NAIVE, Algorithms::ELEVATOR] {
+            for forward_speed in [1, 5, 10, 15, 20, 25] {
+                for spin_speed in [25, 50, 100, 250, 500] {
+                    for max_tracks in [1000, 5000, 10000, 50000] {
+                        for steps in [100, 500, 1000, 5000] {
+                            for _ in 0..10 {
+                                generate_experience(
+                                    &mut log_file,
+                                    forward_speed,
+                                    spin_speed,
+                                    steps,
+                                    max_tracks,
+                                    algorithm,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn main_menu() {
@@ -248,7 +349,9 @@ pub mod menues {
                     simulation_menu(Algorithms::ELEVATOR);
                     details = true;
                 }
-                MainMenuOptions::LOG => {}
+                MainMenuOptions::LOG => {
+                    log_all_configs();
+                }
                 MainMenuOptions::INFO => {
                     print_info();
                     details = true;

@@ -8,7 +8,7 @@ pub mod menues {
 
     use crate::disk::{
         disk::disk::{Disk, DiskMetadata},
-        driver::driver::{Driver, SimpleDriver, Task},
+        driver::driver::{Driver, ElevetorDriver, SimpleDriver, Task},
     };
 
     #[derive(Eq, PartialEq)]
@@ -19,6 +19,11 @@ pub mod menues {
         EXIT,
 
         INVALID,
+    }
+
+    enum Algorithms {
+        NAIVE,
+        ELEVATOR,
     }
 
     fn clear() {
@@ -89,19 +94,23 @@ pub mod menues {
         Task::new(task_id, track, angle)
     }
 
-    fn run_naive_approach_simulation(requests: u32) {
+    fn run_simulation(algorithm: Algorithms, requests: u32) {
         // clear();
         println!("Here is the disk:");
         let disk = build_disk();
         disk.show();
 
-        let mut driver = SimpleDriver::new(disk);
+        let mut tasks: Vec<Task> = Vec::new();
+
+        let mut driver: Box<dyn Driver> = match algorithm {
+            Algorithms::NAIVE => Box::new(SimpleDriver::new(disk)),
+            Algorithms::ELEVATOR => Box::new(ElevetorDriver::new(disk)),
+        };
 
         let mut remaining_tasks = 0;
 
         let mut added_tasks = 0;
         let threshould = requests as f32 / 10000000.0;
-        let mut tasks: Vec<Task> = Vec::new();
         let mut time = 0;
 
         for i in 1..=requests {
@@ -114,6 +123,7 @@ pub mod menues {
 
             if prob < threshould && added_tasks != requests {
                 let task = &tasks[added_tasks as usize];
+                // task.show_task();
                 driver.add_new_task(task);
 
                 added_tasks += 1;
@@ -156,13 +166,23 @@ pub mod menues {
         disk
     }
 
-    fn naivea_approach() {
+    fn naivea_algorithm() {
         clear();
         println!("Enter the number of requests you want to simulate:");
         flush();
 
         let steps = read_number_of_steps();
-        run_naive_approach_simulation(steps);
+        run_simulation(Algorithms::NAIVE, steps);
+        pause();
+    }
+
+    fn elevator_algorithm() {
+        clear();
+        println!("Enter the number of requests you want to simulate:");
+        flush();
+
+        let steps = read_number_of_steps();
+        run_simulation(Algorithms::ELEVATOR, steps);
         pause();
     }
 
@@ -178,10 +198,11 @@ pub mod menues {
             match user_input {
                 MainMenuOptions::NAIVE => {
                     // run_naive_approach_simulation();
-                    naivea_approach();
+                    naivea_algorithm();
                     details = true;
                 }
                 MainMenuOptions::ELEVATOR => {
+                    elevator_algorithm();
                     details = true;
                 }
                 MainMenuOptions::INFO => {

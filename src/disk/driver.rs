@@ -87,6 +87,7 @@ pub mod driver {
                     self.same_direction_list.insert(task.track, vec![task]);
                 }
             }
+            println!("Done");
         }
 
         fn add_to_opposite_direction_list(&mut self, task: &'a Task) {
@@ -99,6 +100,7 @@ pub mod driver {
                     self.opposite_direction_list.insert(task.track, vec![task]);
                 }
             }
+            println!("Done");
         }
 
         fn fetch_same_direction_task(&mut self) -> Option<&'a Task> {
@@ -178,27 +180,18 @@ pub mod driver {
                 DiskState::READ(_) => {
                     if self.disk.get_current_track() == task.track {
                         self.add_to_same_direction_list(task);
+                    } else {
+                        self.add_to_opposite_direction_list(task);
                     }
                 }
                 DiskState::MOVE(state) => {
                     if self.disk.get_current_track() == task.track {
-                        self.opposite_direction_list.insert(task.track, vec![task]);
+                        self.add_to_opposite_direction_list(task);
                     } else {
-                        match self.disk.calculate_moving_direction(task) {
-                            MoveDirection::FORWARD => {
-                                if state.direction == MoveDirection::FORWARD {
-                                    self.add_to_same_direction_list(task);
-                                } else {
-                                    self.add_to_opposite_direction_list(task);
-                                }
-                            }
-                            MoveDirection::BACKWARD => {
-                                if state.direction == MoveDirection::BACKWARD {
-                                    self.add_to_same_direction_list(task);
-                                } else {
-                                    self.add_to_opposite_direction_list(task);
-                                }
-                            }
+                        if self.disk.calculate_moving_direction(task) == state.direction {
+                            self.add_to_same_direction_list(task);
+                        } else {
+                            self.add_to_opposite_direction_list(task);
                         }
                     }
                 }
@@ -226,10 +219,16 @@ pub mod driver {
                                 let task = self.fetch_same_direction_task().unwrap();
                                 self.cache = CacheState::ACTIVE(task);
                                 self.disk.add_move_task(task.track);
-                            } else {
+                            } else if !self.opposite_direction_list.is_empty() {
                                 let temp = self.same_direction_list.to_owned();
                                 self.same_direction_list = self.opposite_direction_list.to_owned();
                                 self.opposite_direction_list = temp;
+                            } else {
+                                // println!(
+                                //     "{}, {}",
+                                //     self.same_direction_list.len(),
+                                //     self.opposite_direction_list.len()
+                                // );
                             }
                         }
                     }
@@ -251,10 +250,9 @@ pub mod driver {
                         .same_direction_list
                         .contains_key(&self.disk.get_current_track())
                     {
-                        let new_task = self.fetch_a_task_for_current_track();
-                        // println!("2");
                         match self.disk.get_state() {
                             DiskState::MOVE(_) => {
+                                let new_task = self.fetch_a_task_for_current_track();
                                 self.disk.detach_current_state();
                                 self.add_to_same_direction_list(f);
                                 self.cache = CacheState::ACTIVE(new_task);

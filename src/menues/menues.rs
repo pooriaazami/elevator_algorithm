@@ -16,6 +16,7 @@ pub mod menues {
     enum MainMenuOptions {
         NAIVE,
         ELEVATOR,
+        LOG,
         INFO,
         EXIT,
 
@@ -46,19 +47,36 @@ pub mod menues {
             println!("Welcome to the Disk Simulation app.\nPlease enter your command:");
         }
 
-        println!("1- Simulate Naive Approach\n2- Simulate elevator algorithm\n3- Info\n4- Exit");
+        println!(
+            "1- Simulate Naive Approach\n2- Simulate Elevator Algorithm\n3- Log\n4- Info\n5- Exit"
+        );
         print!(">> ");
 
         flush();
     }
 
-    fn read_user_input() -> Result<u32, ParseIntError> {
+    fn read_raw_input() -> String {
         let mut user_input = String::new();
         std::io::stdin()
             .read_line(&mut user_input)
             .expect("Invalid input");
 
+        user_input
+    }
+
+    fn read_user_input() -> Result<u32, ParseIntError> {
+        let user_input = read_raw_input();
         user_input.trim().parse::<u32>()
+    }
+
+    fn safe_read_int_value() -> u32 {
+        loop {
+            let value = read_user_input();
+            match value {
+                Ok(v) => return v,
+                Err(_) => print_error_message(),
+            }
+        }
     }
 
     fn read_main_manu_option() -> MainMenuOptions {
@@ -67,8 +85,9 @@ pub mod menues {
         match user_input {
             Ok(1) => MainMenuOptions::NAIVE,
             Ok(2) => MainMenuOptions::ELEVATOR,
-            Ok(3) => MainMenuOptions::INFO,
-            Ok(4) => MainMenuOptions::EXIT,
+            Ok(3) => MainMenuOptions::LOG,
+            Ok(4) => MainMenuOptions::INFO,
+            Ok(5) => MainMenuOptions::EXIT,
             _ => MainMenuOptions::INVALID,
         }
     }
@@ -88,17 +107,21 @@ pub mod menues {
         pause();
     }
 
-    fn generate_random_request(task_id: u32) -> Task {
-        let track = rand::thread_rng().gen_range(1..=10000) as u32;
+    fn generate_random_request(task_id: u32, max_track: u32) -> Task {
+        let track = rand::thread_rng().gen_range(1..=max_track) as u32;
         let angle = rand::thread_rng().gen_range(0..=359) as u32;
 
         Task::new(task_id, track, angle)
     }
 
-    fn run_simulation(algorithm: Algorithms, requests: u32) -> Vec<u32> {
-        // clear();
+    fn run_simulation(
+        algorithm: Algorithms,
+        metadata: DiskMetadata,
+        max_track: u32,
+        requests: u32,
+    ) -> Vec<u32> {
         println!("Here is the disk:");
-        let disk = build_disk();
+        let disk = build_disk(metadata);
         disk.show();
 
         let mut tasks: Vec<Task> = Vec::new();
@@ -117,7 +140,7 @@ pub mod menues {
         let mut time = 0;
 
         for i in 1..=requests {
-            let task = generate_random_request(i);
+            let task = generate_random_request(i, max_track);
             tasks.push(task);
         }
 
@@ -126,7 +149,7 @@ pub mod menues {
 
             if prob < threshould && added_tasks != requests {
                 let task = &tasks[added_tasks as usize];
-                // task.show_task();
+
                 driver.add_new_task(task);
                 insertion_times.insert(*task.get_id(), time);
 
@@ -136,7 +159,7 @@ pub mod menues {
 
             time += 1;
             let result = driver.step();
-
+            // println!("{}", result);
             if result != 0 {
                 remaining_tasks -= 1;
                 let response_length = time - insertion_times[&result];
@@ -144,8 +167,12 @@ pub mod menues {
 
                 response_times.push(response_length);
 
-                if (added_tasks - remaining_tasks) % 10 == 0{
-                    println!("{}/{} more responses are done.", added_tasks - remaining_tasks, requests);
+                if (added_tasks - remaining_tasks) % 10 == 0 {
+                    println!(
+                        "{}/{} more responses are done.",
+                        added_tasks - remaining_tasks,
+                        requests
+                    );
                 }
             }
         }
@@ -153,21 +180,31 @@ pub mod menues {
         response_times
     }
 
-    fn read_number_of_steps() -> u32 {
-        let mut user_input = read_user_input();
+    fn read_hard_metadata() -> (DiskMetadata, u32) {
+        println!("Do you want to config the hard drive?(Y/N)");
+        let mut user_input = read_raw_input().trim().to_lowercase();
+
         loop {
-            match user_input {
-                Ok(value) => return value,
-                Err(_) => {
-                    print_error_message();
-                    user_input = read_user_input();
-                }
+            if user_input == "y" {
+                println!("Enter forward-backward speed:");
+                let fd_speed = safe_read_int_value();
+
+                println!("Enter spin speed:");
+                let spin_speed = safe_read_int_value();
+
+                println!("Enter number of the tracks:");
+                let max_tracks = safe_read_int_value();
+
+                return (DiskMetadata::from_config(fd_speed, spin_speed), max_tracks);
+            } else if user_input == "n" {
+                return (DiskMetadata::default(), 10000);
             }
+            print_error_message();
+            user_input = read_raw_input().trim().to_lowercase();
         }
     }
 
-    fn build_disk() -> Disk {
-        let metadata = DiskMetadata::new(1000000, 600000000);
+    fn build_disk(metadata: DiskMetadata) -> Disk {
         let disk = Disk::new(metadata);
         disk
     }
@@ -181,30 +218,20 @@ pub mod menues {
         println!("mean response time: {}", mean);
     }
 
-    fn naivea_algorithm() {
+    fn simulation_menu(algorithm: Algorithms) {
         clear();
+        let (metadata, max_track) = read_hard_metadata();
         println!("Enter the number of requests you want to simulate:");
-        flush();
+        // flush();
 
-        let steps = read_number_of_steps();
-        let response_times = run_simulation(Algorithms::NAIVE, steps);
-        show_stats(response_times);
-        pause();
-    }
+        let steps = safe_read_int_value();
+        let response_times = run_simulation(algorithm, metadata, max_track, steps);
 
-    fn elevator_algorithm() {
-        clear();
-        println!("Enter the number of requests you want to simulate:");
-        flush();
-
-        let steps = read_number_of_steps();
-        let response_times = run_simulation(Algorithms::ELEVATOR, steps);
         show_stats(response_times);
         pause();
     }
 
     pub fn main_menu() {
-        // print_main_menu(true);
         let mut user_input = MainMenuOptions::INVALID;
         let mut details = true;
 
@@ -214,14 +241,14 @@ pub mod menues {
 
             match user_input {
                 MainMenuOptions::NAIVE => {
-                    // run_naive_approach_simulation();
-                    naivea_algorithm();
+                    simulation_menu(Algorithms::NAIVE);
                     details = true;
                 }
                 MainMenuOptions::ELEVATOR => {
-                    elevator_algorithm();
+                    simulation_menu(Algorithms::ELEVATOR);
                     details = true;
                 }
+                MainMenuOptions::LOG => {}
                 MainMenuOptions::INFO => {
                     print_info();
                     details = true;

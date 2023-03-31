@@ -1,10 +1,7 @@
 pub mod driver {
     use std::collections::HashMap;
 
-    use crate::disk::{
-        disk::disk::Disk,
-        hardware_manager::hardware_manager::{DiskState},
-    };
+    use crate::disk::{disk::disk::Disk, hardware_manager::hardware_manager::DiskState};
 
     pub struct Task {
         task_id: u32,
@@ -49,7 +46,7 @@ pub mod driver {
             &self.track
         }
 
-        pub fn get_id(&self) -> &u32{
+        pub fn get_id(&self) -> &u32 {
             &self.task_id
         }
 
@@ -225,19 +222,12 @@ pub mod driver {
                                 let temp = self.same_direction_list.to_owned();
                                 self.same_direction_list = self.opposite_direction_list.to_owned();
                                 self.opposite_direction_list = temp;
-                            } else {
-                                // println!(
-                                //     "{}, {}",
-                                //     self.same_direction_list.len(),
-                                //     self.opposite_direction_list.len()
-                                // );
                             }
                         }
                     }
                 }
                 CacheState::ACTIVE(f) => {
                     if self.disk.get_current_track() == f.track {
-                        // println!("1");
                         if self.disk.get_current_angle() == f.angle {
                             self.cache = CacheState::EMPTY;
                             return f.task_id;
@@ -262,7 +252,6 @@ pub mod driver {
                             _ => {}
                         }
                     } else {
-                        // println!("{}", self.disk.get_current_track());
                         self.disk.step();
                     }
                 }

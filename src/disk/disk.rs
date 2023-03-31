@@ -12,7 +12,7 @@ pub mod disk {
 
     pub struct DiskMetadata {
         forward_speed: u32,
-        base_spin_speed: u32,
+        spin_speed: u32,
     }
 
     pub struct Disk {
@@ -50,14 +50,25 @@ pub mod disk {
     }
 
     impl DiskMetadata {
-        pub fn new(forward_speed: u32, base_spin_speed: u32) -> DiskMetadata {
+        pub fn new(forward_speed: u32, spin_speed: u32) -> DiskMetadata {
             let forward_speed = ((1.0 / forward_speed as f32) * 1000.0 * 1000.0) as u32;
             let base_spin_speed =
-                ((1.0 / base_spin_speed as f32) * 60.0 * 1000.0 * 1000.0 * 1000.0) as u32;
+                ((1.0 / spin_speed as f32) * 60.0 * 1000.0 * 1000.0 * 1000.0) as u32;
 
             DiskMetadata {
                 forward_speed: forward_speed,
-                base_spin_speed: base_spin_speed,
+                spin_speed: base_spin_speed,
+            }
+        }
+
+        pub fn default() -> DiskMetadata {
+            DiskMetadata::from_config(1, 100)
+        }
+
+        pub fn from_config(forward_speed: u32, spin_speed: u32) -> DiskMetadata {
+            DiskMetadata {
+                forward_speed: forward_speed,
+                spin_speed: spin_speed,
             }
         }
     }
@@ -91,7 +102,7 @@ pub mod disk {
                 self.head.current_angle,
                 self.get_str_state(),
                 self.metadata.forward_speed,
-                self.metadata.base_spin_speed
+                self.metadata.spin_speed
             );
         }
 
@@ -119,7 +130,7 @@ pub mod disk {
                 DiskState::READ(r) => {
                     self.cahce += 1;
 
-                    if self.cahce == self.metadata.base_spin_speed {
+                    if self.cahce == self.metadata.spin_speed {
                         self.head.current_angle += 1;
                         self.head.current_angle %= 360;
                         self.cahce = 0;

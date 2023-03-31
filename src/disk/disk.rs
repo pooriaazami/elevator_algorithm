@@ -24,7 +24,7 @@ pub mod disk {
     impl DiskHead {
         pub fn default() -> DiskHead {
             DiskHead {
-                current_track: 0,
+                current_track: 1,
                 current_angle: 0,
                 state: DiskState::STOP,
             }
@@ -188,7 +188,7 @@ pub mod disk {
         }
 
         pub fn calculate_moving_direction(&self, task: &Task) -> MoveDirection {
-            if task.get_track() >= self.head.current_track {
+            if task.get_track() >= &self.head.current_track {
                 MoveDirection::FORWARD
             } else {
                 MoveDirection::BACKWARD

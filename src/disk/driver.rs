@@ -45,8 +45,8 @@ pub mod driver {
             }
         }
 
-        pub fn get_track(&self) -> u32 {
-            return self.track;
+        pub fn get_track(&self) -> &u32 {
+            &self.track
         }
     }
 
@@ -71,29 +71,59 @@ pub mod driver {
         }
 
         fn add_to_same_direction_list(&mut self, task: &'a Task) {
-            let vector = self.same_direction_list.get_mut(&task.get_track());
+            let vector = self.same_direction_list.get_mut(&task.track);
             match vector {
                 Some(v) => {
                     v.push(task);
                 }
                 None => {
-                    self.same_direction_list
-                        .insert(task.get_track(), vec![task]);
+                    self.same_direction_list.insert(task.track, vec![task]);
                 }
             }
         }
 
         fn add_to_opposite_direction_list(&mut self, task: &'a Task) {
-            let vector = self.opposite_direction_list.get_mut(&task.get_track());
+            let vector = self.opposite_direction_list.get_mut(&task.track);
             match vector {
                 Some(v) => {
                     v.push(task);
                 }
                 None => {
-                    self.opposite_direction_list
-                        .insert(task.get_track(), vec![task]);
+                    self.opposite_direction_list.insert(task.track, vec![task]);
                 }
             }
+        }
+
+        fn fetch_same_direction_task(&mut self) -> Option<&'a Task> {
+            let keys: Vec<_> = { self.same_direction_list.keys().take(1).cloned().collect() };
+            for key in keys {
+                let mut tasks = self.same_direction_list.remove(&key).unwrap();
+                let task = tasks.pop().unwrap();
+
+                if tasks.len() != 0 {
+                    self.same_direction_list.insert(key, tasks);
+                }
+
+                // println!("returning task with id: {}", task.task_id);
+                return Some(task);
+            }
+
+            None
+        }
+
+        fn fetch_a_task_for_current_track(&mut self) -> &'a Task {
+            let mut tasks = self
+                .same_direction_list
+                .remove(&self.disk.get_current_track())
+                .unwrap();
+            let task = tasks.pop().unwrap();
+
+            if tasks.len() != 0 {
+                self.same_direction_list
+                    .insert(self.disk.get_current_track(), tasks);
+            }
+
+            task
         }
     }
 
@@ -137,7 +167,7 @@ pub mod driver {
         fn add_new_task(&mut self, task: &'a Task) {
             match self.disk.get_state() {
                 DiskState::STOP => {
-                    self.same_direction_list.insert(task.track, vec![task]);
+                    self.add_to_same_direction_list(task);
                 }
                 DiskState::READ(_) => {
                     if self.disk.get_current_track() == task.track {
@@ -170,7 +200,69 @@ pub mod driver {
         }
 
         fn step(&mut self) -> u32 {
-            todo!()
+            match self.cache {
+                CacheState::EMPTY => {
+                    let tasks = self
+                        .same_direction_list
+                        .get_mut(&self.disk.get_current_track());
+                    match tasks {
+                        Some(tasks) => {
+                            let task = tasks.pop().unwrap();
+                            if tasks.len() == 0 {
+                                self.same_direction_list
+                                    .remove(&self.disk.get_current_track());
+                            }
+
+                            self.cache = CacheState::ACTIVE(task);
+                        }
+                        None => {
+                            if !self.same_direction_list.is_empty() {
+                                let task = self.fetch_same_direction_task().unwrap();
+                                self.cache = CacheState::ACTIVE(task);
+                                self.disk.add_move_task(task.track);
+                            } else {
+                                let temp = self.same_direction_list.to_owned();
+                                self.same_direction_list = self.opposite_direction_list.to_owned();
+                                self.opposite_direction_list = temp;
+                            }
+                        }
+                    }
+                }
+                CacheState::ACTIVE(f) => {
+                    if self.disk.get_current_track() == f.track {
+                        // println!("1");
+                        if self.disk.get_current_angle() == f.angle {
+                            self.cache = CacheState::EMPTY;
+                            return f.task_id;
+                        } else {
+                            if self.disk.is_rotating() {
+                                self.disk.step()
+                            } else {
+                                self.disk.add_reading_task(f.angle);
+                            }
+                        }
+                    } else if self
+                        .same_direction_list
+                        .contains_key(&self.disk.get_current_track())
+                    {
+                        let new_task = self.fetch_a_task_for_current_track();
+                        // println!("2");
+                        match self.disk.get_state() {
+                            DiskState::MOVE(_) => {
+                                self.disk.detach_current_state();
+                                self.add_to_same_direction_list(f);
+                                self.cache = CacheState::ACTIVE(new_task);
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        // println!("{}", self.disk.get_current_track());
+                        self.disk.step();
+                    }
+                }
+            }
+
+            0
         }
     }
 }
